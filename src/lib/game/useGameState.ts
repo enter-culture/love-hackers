@@ -12,6 +12,7 @@ interface GameState {
 }
 
 interface GameActions {
+  enterLobby: () => void;
   startGame: () => void;
   addExchange: (characterId: string, exchange: Exchange) => void;
   advanceCharacter: () => void;
@@ -20,10 +21,14 @@ interface GameActions {
 }
 
 export function useGameState(): GameState & GameActions {
-  const [step, setStep] = useState<GameStep>('lobby');
+  const [step, setStep] = useState<GameStep>('intro');
   const [currentCharacterIndex, setCurrentCharacterIndex] = useState(0);
   const [conversations, setConversations] = useState<ConversationRecord[]>([]);
   const [results, setResults] = useState<CharacterResult[]>([]);
+
+  const enterLobby = useCallback(() => {
+    setStep('lobby');
+  }, []);
 
   const startGame = useCallback(() => {
     setStep('rotation');
@@ -55,7 +60,7 @@ export function useGameState(): GameState & GameActions {
   }, []);
 
   const restartGame = useCallback(() => {
-    setStep('lobby');
+    setStep('intro');
     setCurrentCharacterIndex(0);
     setConversations([]);
     setResults([]);
@@ -67,6 +72,7 @@ export function useGameState(): GameState & GameActions {
     currentCharacterIndex,
     conversations,
     results,
+    enterLobby,
     startGame,
     addExchange,
     advanceCharacter,

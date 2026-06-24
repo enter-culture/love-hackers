@@ -1,4 +1,4 @@
-export type GameStep = 'lobby' | 'rotation' | 'result';
+export type GameStep = 'intro' | 'lobby' | 'rotation' | 'result';
 
 export interface Exchange {
   question: string;
