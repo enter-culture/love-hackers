@@ -74,6 +74,16 @@ body { font-family: var(--font-geist), sans-serif; }
 .intro-logo-lockup em { color: var(--intro-gold); font-family: Georgia, 'Times New Roman', serif; font-size: 1.15em; font-style: italic; font-weight: 400; letter-spacing: -.13em; }
 .intro-tagline { margin: 1rem 0 0; color: rgb(255 247 235 / .7); font-size: .8rem; letter-spacing: .12em; }
 
+.intro-naneunsolo-logo {
+  width: min(14rem, 65vw);
+  margin-bottom: 0.6rem;
+}
+
+.intro-naneunsolo-lottie {
+  width: 100%;
+  height: auto;
+}
+
 .intro-lottie-stage {
   position: relative;
   display: grid;
