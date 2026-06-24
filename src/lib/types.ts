@@ -3,6 +3,7 @@ export interface Character {
   displayName: string
   color: string
   accentColor: string
+  model?: string
 }
 
 export interface Question {

@@ -1,17 +1,58 @@
 'use client'
 
-import { Html, useGLTF } from '@react-three/drei'
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+
+import { Html, useAnimations, useGLTF } from '@react-three/drei'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { useCallback, useEffect, useRef, useState } from 'react'
 import * as THREE from 'three'
+import { SkeletonUtils } from 'three-stdlib'
 
 import { useTypewriter } from '@/hooks/useTypewriter'
-import { CHARACTERS, NPC_POSITIONS } from '@/lib/characters'
+import { CHARACTERS, NPC_POSITIONS, PLAYER_MODEL } from '@/lib/characters'
 import type { Character } from '@/lib/types'
 import { getQuestionsForNpc, NPC_REACTIONS, QUESTIONS_PER_NPC } from '@/lib/questions'
 
-// ─── Sub-components ──────────────────────────────────────────────────────────
+// Preload all models
+useGLTF.preload(PLAYER_MODEL)
+CHARACTERS.forEach(c => { if (c.model) useGLTF.preload(c.model) })
+
+// ─── AnimalModel ─────────────────────────────────────────────────────────────
+
+interface AnimalModelProps {
+  url: string
+  scale?: number
+  isMovingRef?: React.MutableRefObject<boolean>
+}
+
+function AnimalModel({ url, scale = 0.45, isMovingRef }: AnimalModelProps) {
+  const { scene, animations } = useGLTF(url)
+  const cloned = useMemo(() => SkeletonUtils.clone(scene), [scene])
+  const { ref, actions } = useAnimations(animations)
+  const wasMoving = useRef(false)
+
+  useEffect(() => {
+    actions['Idle']?.reset().play()
+  }, [actions])
+
+  useFrame(() => {
+    if (!isMovingRef) return
+    const moving = isMovingRef.current
+    if (moving === wasMoving.current) return
+    wasMoving.current = moving
+    if (moving) {
+      actions['Idle']?.fadeOut(0.2)
+      actions['Walk']?.reset().fadeIn(0.2).play()
+    } else {
+      actions['Walk']?.fadeOut(0.2)
+      actions['Idle']?.reset().fadeIn(0.2).play()
+    }
+  })
+
+  return <primitive ref={ref} object={cloned} scale={scale} />
+}
+
+// ─── Tree ────────────────────────────────────────────────────────────────────
 
 function Tree({ position }: { position: [number, number, number] }) {
   return (
@@ -32,6 +73,8 @@ function Tree({ position }: { position: [number, number, number] }) {
   )
 }
 
+// ─── Player ──────────────────────────────────────────────────────────────────
+
 interface PlayerProps {
   targetRef: React.MutableRefObject<THREE.Vector3>
   posRef: React.MutableRefObject<THREE.Vector3>
@@ -39,7 +82,8 @@ interface PlayerProps {
 }
 
 function Player({ targetRef, posRef, isDialogueActive }: PlayerProps) {
-  const meshRef = useRef<THREE.Group>(null!)
+  const groupRef = useRef<THREE.Group>(null!)
+  const isMovingRef = useRef(false)
   const { camera } = useThree()
 
   useFrame(() => {
@@ -47,8 +91,8 @@ function Player({ targetRef, posRef, isDialogueActive }: PlayerProps) {
       posRef.current.lerp(targetRef.current, 0.06)
     }
 
-    if (meshRef.current) {
-      meshRef.current.position.copy(posRef.current)
+    if (groupRef.current) {
+      groupRef.current.position.copy(posRef.current)
 
       const dir = new THREE.Vector3(
         targetRef.current.x - posRef.current.x,
@@ -56,7 +100,10 @@ function Player({ targetRef, posRef, isDialogueActive }: PlayerProps) {
         targetRef.current.z - posRef.current.z,
       )
       if (dir.lengthSq() > 0.005) {
-        meshRef.current.rotation.y = Math.atan2(dir.x, dir.z)
+        groupRef.current.rotation.y = Math.atan2(dir.x, dir.z)
+        isMovingRef.current = true
+      } else {
+        isMovingRef.current = false
       }
     }
 
@@ -66,25 +113,20 @@ function Player({ targetRef, posRef, isDialogueActive }: PlayerProps) {
   })
 
   return (
-    <group ref={meshRef} position={[0, 0, 4]}>
-      {/* body */}
-      <mesh position={[0, 0.45, 0]}>
-        <boxGeometry args={[0.55, 0.8, 0.4]} />
-        <meshToonMaterial color='#FFB347' />
-      </mesh>
-      {/* head */}
-      <mesh position={[0, 1.1, 0]}>
-        <boxGeometry args={[0.48, 0.48, 0.48]} />
-        <meshToonMaterial color='#FFDAC1' />
-      </mesh>
-      {/* hair */}
-      <mesh position={[0, 1.42, 0]}>
-        <boxGeometry args={[0.5, 0.14, 0.5]} />
-        <meshToonMaterial color='#5c3d1e' />
-      </mesh>
+    <group ref={groupRef} position={[0, 0, 4]}>
+      <Suspense fallback={
+        <group>
+          <mesh position={[0, 0.45, 0]}><boxGeometry args={[0.55, 0.8, 0.4]} /><meshToonMaterial color='#e8c07a' /></mesh>
+          <mesh position={[0, 1.1, 0]}><boxGeometry args={[0.48, 0.48, 0.48]} /><meshToonMaterial color='#FFDAC1' /></mesh>
+        </group>
+      }>
+        <AnimalModel url={PLAYER_MODEL} isMovingRef={isMovingRef} />
+      </Suspense>
     </group>
   )
 }
+
+// ─── Npc ─────────────────────────────────────────────────────────────────────
 
 interface NpcProps {
   character: Character
@@ -95,14 +137,6 @@ interface NpcProps {
 }
 
 function Npc({ character, position, isNearby, isCompleted, onTalk }: NpcProps) {
-  const meshRef = useRef<THREE.Group>(null!)
-
-  useFrame(({ clock }) => {
-    if (meshRef.current && !isCompleted) {
-      meshRef.current.position.y = Math.sin(clock.elapsedTime * 1.5 + position[0]) * 0.05
-    }
-  })
-
   return (
     <group position={position}>
       {/* table */}
@@ -119,46 +153,42 @@ function Npc({ character, position, isNearby, isCompleted, onTalk }: NpcProps) {
         <meshToonMaterial color='#c4955a' />
       </mesh>
 
-      {/* NPC body */}
-      <group ref={meshRef}>
-        <mesh position={[0, 0.45, 0]}>
-          <boxGeometry args={[0.55, 0.8, 0.4]} />
-          <meshToonMaterial color={character.color} />
-        </mesh>
-        <mesh position={[0, 1.1, 0]}>
-          <boxGeometry args={[0.48, 0.48, 0.48]} />
-          <meshToonMaterial color='#FFDAC1' />
-        </mesh>
-        <mesh position={[0, 1.42, 0]}>
-          <boxGeometry args={[0.5, 0.14, 0.5]} />
-          <meshToonMaterial color={character.accentColor} />
-        </mesh>
+      {/* animal model */}
+      <Suspense fallback={
+        <group>
+          <mesh position={[0, 0.45, 0]}><boxGeometry args={[0.55, 0.8, 0.4]} /><meshToonMaterial color={character.color} /></mesh>
+          <mesh position={[0, 1.1, 0]}><boxGeometry args={[0.48, 0.48, 0.48]} /><meshToonMaterial color='#FFDAC1' /></mesh>
+        </group>
+      }>
+        {character.model && <AnimalModel url={character.model} />}
+      </Suspense>
 
-        {/* Name + interaction button */}
-        <Html position={[0, 2.2, 0]} center distanceFactor={8}>
-          <div className='flex flex-col items-center gap-1 text-center' style={{ whiteSpace: 'nowrap' }}>
-            {isCompleted ? (
-              <span className='rounded-full bg-green-500 px-2 py-0.5 text-xs font-bold text-white'>
-                ✅ 완료
-              </span>
-            ) : isNearby ? (
-              <button
-                onClick={() => onTalk(character.id)}
-                className='rounded-full bg-pink-500 px-3 py-1 text-xs font-bold text-white shadow-md hover:bg-pink-600 transition-colors animate-bounce'
-              >
-                💬 대화하기
-              </button>
-            ) : (
-              <span className='rounded-full bg-white/80 px-2 py-0.5 text-xs font-semibold text-gray-700 shadow'>
-                {character.displayName}
-              </span>
-            )}
-          </div>
-        </Html>
-      </group>
+      {/* name / talk overlay */}
+      <Html position={[0, 2.1, 0]} center distanceFactor={8}>
+        <div className='flex flex-col items-center gap-1 text-center' style={{ whiteSpace: 'nowrap' }}>
+          {isCompleted ? (
+            <span className='rounded-full bg-green-500 px-2 py-0.5 text-xs font-bold text-white'>
+              ✅ 완료
+            </span>
+          ) : isNearby ? (
+            <button
+              onClick={() => onTalk(character.id)}
+              className='rounded-full bg-pink-500 px-3 py-1 text-xs font-bold text-white shadow-md hover:bg-pink-600 transition-colors animate-bounce'
+            >
+              💬 대화하기
+            </button>
+          ) : (
+            <span className='rounded-full bg-white/80 px-2 py-0.5 text-xs font-semibold text-gray-700 shadow'>
+              {character.displayName}
+            </span>
+          )}
+        </div>
+      </Html>
     </group>
   )
 }
+
+// ─── ClickRipple ─────────────────────────────────────────────────────────────
 
 interface ClickRippleProps {
   position: THREE.Vector3 | null
@@ -182,9 +212,7 @@ function ClickRipple({ position }: ClickRippleProps) {
   }, [position])
 
   useFrame(() => {
-    if (!isActive.current || !meshRef.current) {
-      return
-    }
+    if (!isActive.current || !meshRef.current) return
     const elapsed = (Date.now() - startTime.current) / 600
     if (elapsed >= 1) {
       meshRef.current.visible = false
@@ -205,7 +233,7 @@ function ClickRipple({ position }: ClickRippleProps) {
   )
 }
 
-// ─── GameWorld (inside Canvas) ───────────────────────────────────────────────
+// ─── GameWorld ────────────────────────────────────────────────────────────────
 
 interface GameWorldProps {
   characters: Character[]
@@ -234,9 +262,7 @@ function GameWorld({
 
   const handleGroundClick = useCallback(
     (e: { point: THREE.Vector3; stopPropagation: () => void }) => {
-      if (activeNpcId) {
-        return
-      }
+      if (activeNpcId) return
       e.stopPropagation()
       const clamped = new THREE.Vector3(
         THREE.MathUtils.clamp(e.point.x, -9, 9),
@@ -250,16 +276,12 @@ function GameWorld({
   )
 
   useFrame(() => {
-    if (activeNpcId) {
-      return
-    }
+    if (activeNpcId) return
     let nearest: string | null = null
     let nearestDist = 2.8
 
     characters.forEach((char, i) => {
-      if (completedNpcIds.has(char.id)) {
-        return
-      }
+      if (completedNpcIds.has(char.id)) return
       const npcPos = new THREE.Vector3(...NPC_POSITIONS[i])
       const dist = playerPosRef.current.distanceTo(npcPos)
       if (dist < nearestDist) {
@@ -282,14 +304,13 @@ function GameWorld({
       <color attach='background' args={['#c8eaf5']} />
       <fog attach='fog' args={['#c8eaf5', 22, 38]} />
 
-      {/* Ground (clickable) */}
+      {/* Ground */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow onClick={handleGroundClick}>
         <planeGeometry args={[22, 22]} />
         <meshToonMaterial color='#88c878' />
       </mesh>
       <gridHelper args={[22, 22, '#6ab260', '#6ab260']} position={[0, 0.01, 0]} />
 
-      {/* Click ripple */}
       <ClickRipple position={clickPos} />
 
       {/* Trees */}
@@ -345,9 +366,7 @@ function DialogueBox({ character, npcIndex, onComplete }: DialogueBoxProps) {
   )
 
   const handleChoice = (choiceIdx: number) => {
-    if (!isDone || phase === 'reaction') {
-      return
-    }
+    if (!isDone || phase === 'reaction') return
     const score = currentQuestion.scores[choiceIdx]
     const newTotal = totalScore + score
     setTotalScore(newTotal)
@@ -370,10 +389,7 @@ function DialogueBox({ character, npcIndex, onComplete }: DialogueBoxProps) {
     <div className='pointer-events-auto absolute bottom-0 left-0 right-0 px-4 pb-6'>
       <div className='mx-auto max-w-lg rounded-2xl bg-white/95 p-5 shadow-2xl backdrop-blur-sm'>
         <div className='mb-3 flex items-center gap-2'>
-          <div
-            className='h-8 w-8 rounded-full'
-            style={{ backgroundColor: character.color }}
-          />
+          <div className='h-8 w-8 rounded-full' style={{ backgroundColor: character.color }} />
           <span className='font-bold text-gray-800'>{character.displayName}</span>
           <span className='ml-auto text-xs text-gray-400'>
             {questionIdx + 1} / {QUESTIONS_PER_NPC}
@@ -402,7 +418,7 @@ function DialogueBox({ character, npcIndex, onComplete }: DialogueBoxProps) {
   )
 }
 
-// ─── GameClient (root) ───────────────────────────────────────────────────────
+// ─── GameClient ───────────────────────────────────────────────────────────────
 
 export function GameClient() {
   const searchParams = useSearchParams()
@@ -427,9 +443,7 @@ export function GameClient() {
 
   const handleDialogueComplete = useCallback(
     (score: number) => {
-      if (!activeNpcId) {
-        return
-      }
+      if (!activeNpcId) return
       setScores(prev => ({ ...prev, [activeNpcId]: score }))
       setCompletedNpcIds(prev => new Set([...prev, activeNpcId]))
       setActiveNpcId(null)
@@ -446,27 +460,24 @@ export function GameClient() {
   }, [characters, scores, router])
 
   const isAllDone = completedNpcIds.size === characters.length
-
   const activeCharacter = characters.find(c => c.id === activeNpcId)
   const activeNpcIndex = activeCharacter ? characters.indexOf(activeCharacter) : 0
 
   return (
     <div className='relative h-full w-full select-none'>
-      <Canvas
-        shadows
-        camera={{ position: [0, 9, 13], fov: 50 }}
-        style={{ background: '#c8eaf5' }}
-      >
-        <GameWorld
-          characters={characters}
-          playerTargetRef={playerTargetRef}
-          playerPosRef={playerPosRef}
-          activeNpcId={activeNpcId}
-          completedNpcIds={completedNpcIds}
-          onNearbyChange={() => {}}
-          onGroundClick={handleGroundClick}
-          onTalk={handleTalk}
-        />
+      <Canvas shadows camera={{ position: [0, 9, 13], fov: 50 }} style={{ background: '#c8eaf5' }}>
+        <Suspense fallback={null}>
+          <GameWorld
+            characters={characters}
+            playerTargetRef={playerTargetRef}
+            playerPosRef={playerPosRef}
+            activeNpcId={activeNpcId}
+            completedNpcIds={completedNpcIds}
+            onNearbyChange={() => {}}
+            onGroundClick={handleGroundClick}
+            onTalk={handleTalk}
+          />
+        </Suspense>
       </Canvas>
 
       {/* Progress HUD */}
@@ -487,7 +498,7 @@ export function GameClient() {
         </div>
       )}
 
-      {/* Dialogue overlay */}
+      {/* Dialogue */}
       {activeNpcId && activeCharacter && (
         <DialogueBox
           character={activeCharacter}
