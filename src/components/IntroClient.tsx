@@ -4,6 +4,7 @@ import dynamic from 'next/dynamic'
 import { useRouter } from 'next/navigation'
 
 import introData from '../../public/animations/intro.json'
+import naneunsoloLogo from '../../public/animations/naneunsolo-logo.json'
 
 const Lottie = dynamic(() => import('lottie-react'), { ssr: false })
 
@@ -17,7 +18,16 @@ export function IntroClient() {
       <div className='intro-spotlight intro-spotlight-right' aria-hidden='true' />
 
       <section className='intro-content' aria-labelledby='intro-title'>
-        <p className='intro-kicker'>LOVE HACKERS ORIGINAL</p>
+        <div className='intro-naneunsolo-logo' aria-label='나는솔로'>
+          <Lottie
+            animationData={naneunsoloLogo}
+            className='intro-naneunsolo-lottie'
+            loop
+            autoplay
+            rendererSettings={{ preserveAspectRatio: 'xMidYMid meet' }}
+          />
+        </div>
+
         <p className='intro-season'>ROMANCE SIMULATION · 2026</p>
 
         <div className='intro-logo-lockup'>
