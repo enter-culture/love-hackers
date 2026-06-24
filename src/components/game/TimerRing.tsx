@@ -33,7 +33,7 @@ export function TimerRing({ totalSeconds, onExpire }: TimerRingProps) {
     };
   }, [totalSeconds, onExpire]);
 
-  const radius = 36;
+  const radius = 32;
   const circumference = 2 * Math.PI * radius;
   const progress = remaining / totalSeconds;
   const strokeDashoffset = circumference * (1 - progress);
@@ -42,33 +42,59 @@ export function TimerRing({ totalSeconds, onExpire }: TimerRingProps) {
   const mm = String(Math.floor(remaining / 60)).padStart(2, '0');
   const ss = String(remaining % 60).padStart(2, '0');
 
+  const ringColor = isWarning ? '#E84040' : '#F9A916';
+  const bgColor = isWarning ? '#FFE0E0' : '#FFFEFA';
+  const borderColor = isWarning ? '#C02020' : '#C48D3F';
+  const shadowColor = isWarning ? '#A01010' : '#9B6A20';
+
   return (
-    <div className="relative flex items-center justify-center" style={{ width: 88, height: 88 }}>
-      <svg width={88} height={88} className="-rotate-90">
+    /* ACNH 스타일 박스 안에 타이머 링 */
+    <div
+      className="relative flex items-center justify-center"
+      style={{
+        width: 80,
+        height: 80,
+        background: bgColor,
+        border: `3px solid ${borderColor}`,
+        borderRadius: 99,
+        boxShadow: `0 4px 0 ${shadowColor}`,
+        fontFamily: "'Nunito', sans-serif",
+        transition: 'background 0.3s, border-color 0.3s',
+      }}
+    >
+      <svg width={80} height={80} className="absolute inset-0 -rotate-90">
+        {/* 배경 트랙 */}
         <circle
-          cx={44}
-          cy={44}
+          cx={40}
+          cy={40}
           r={radius}
           fill="none"
-          stroke="rgba(255,255,255,0.1)"
-          strokeWidth={6}
+          stroke={`${borderColor}33`}
+          strokeWidth={5}
         />
+        {/* 진행 아크 */}
         <circle
-          cx={44}
-          cy={44}
+          cx={40}
+          cy={40}
           r={radius}
           fill="none"
-          stroke={isWarning ? '#ef4444' : '#f59e0b'}
-          strokeWidth={6}
+          stroke={ringColor}
+          strokeWidth={5}
           strokeLinecap="round"
           strokeDasharray={circumference}
           strokeDashoffset={strokeDashoffset}
           style={{ transition: 'stroke-dashoffset 0.9s linear, stroke 0.3s' }}
         />
       </svg>
+
+      {/* 시간 텍스트 */}
       <span
-        className="absolute text-sm font-bold tabular-nums"
-        style={{ color: isWarning ? '#ef4444' : '#f5f0e0' }}
+        className="relative font-900 tabular-nums"
+        style={{
+          fontSize: 15,
+          color: isWarning ? '#C02020' : '#3D2810',
+          animation: isWarning ? 'pulse 0.8s ease-in-out infinite' : 'none',
+        }}
       >
         {mm}:{ss}
       </span>

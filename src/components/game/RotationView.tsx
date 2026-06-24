@@ -5,7 +5,6 @@ import type { Exchange, RotationCharacter } from '@/lib/game/types';
 
 import { CafeBackground } from './CafeBackground';
 import { DialoguePanel } from './DialoguePanel';
-import { PokemonSprite } from './PokemonSprite';
 import { TimerRing } from './TimerRing';
 
 interface QuestionState {
@@ -77,7 +76,7 @@ export function RotationView({ character, onComplete }: RotationViewProps) {
         });
         reactionText = res.reaction;
       } catch {
-        // 폴백 유지
+        // 폴백
       }
 
       const newExchange: Exchange = {
@@ -110,72 +109,83 @@ export function RotationView({ character, onComplete }: RotationViewProps) {
   }, [onComplete]);
 
   return (
-    <div className="relative w-full h-screen overflow-hidden">
-      <CafeBackground />
+    <div
+      className="relative w-full h-screen overflow-hidden"
+      style={{ fontFamily: "'Nunito', sans-serif" }}
+    >
+      {/* ── 3D 카페 씬 (포켓몬 빌보드 포함) ── */}
+      <CafeBackground pokemonId={character.pokemonId} />
 
-      {/* 만료 오버레이 */}
+      {/* ── UI 오버레이 ── */}
+      <div className="absolute inset-0 flex flex-col" style={{ zIndex: 10, pointerEvents: 'none' }}>
+
+        {/* 상단 바 */}
+        <div className="flex items-start justify-between px-4 pt-12 pb-0" style={{ pointerEvents: 'auto' }}>
+          {/* 캐릭터 정보 배지 */}
+          <div
+            className="px-3 py-2 rounded-2xl"
+            style={{
+              background: 'rgba(255,254,250,0.88)',
+              border: '2.5px solid var(--ac-border)',
+              boxShadow: '0 3px 0 var(--ac-border-dark)',
+              backdropFilter: 'blur(8px)',
+            }}
+          >
+            <p className="font-900 text-base leading-tight" style={{ color: 'var(--ac-text)' }}>
+              {character.displayName}
+            </p>
+            <p className="font-600 text-xs leading-tight mt-0.5" style={{ color: '#8B6030' }}>
+              {character.personality}
+            </p>
+          </div>
+
+          <TimerRing totalSeconds={180} onExpire={handleTimerExpire} />
+        </div>
+
+        {/* 빈 공간 (3D 캐릭터 영역) */}
+        <div className="flex-1" />
+
+        {/* 대화 패널 */}
+        {!isExpired && currentQuestion && (
+          <div style={{ pointerEvents: 'auto' }}>
+            <DialoguePanel
+              character={character}
+              question={currentQuestion.question}
+              choices={currentQuestion.choices}
+              onChoose={handleChoose}
+              isLoading={isLoadingQuestion}
+              chosenIndex={chosenIndex}
+              reaction={reaction}
+            />
+          </div>
+        )}
+      </div>
+
+      {/* ── 시간 종료 오버레이 ── */}
       {isExpired && (
         <div
           className="absolute inset-0 flex items-center justify-center"
-          style={{ zIndex: 30, background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(6px)' }}
+          style={{ zIndex: 30, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }}
         >
-          <div className="text-center game-entrance">
-            <p className="text-5xl mb-3">🔔</p>
-            <p className="text-lg font-bold" style={{ color: '#f5f0e8' }}>
-              시간이 다 됐어요!
-            </p>
-            <p className="text-sm mt-1" style={{ color: 'rgba(240,235,220,0.5)' }}>
-              다음 상대로 넘어가요...
-            </p>
+          <div className="game-entrance text-center">
+            <div
+              className="px-8 py-6 rounded-3xl"
+              style={{
+                background: 'var(--ac-cream)',
+                border: '4px solid var(--ac-border)',
+                boxShadow: '0 8px 0 var(--ac-border-dark)',
+              }}
+            >
+              <p className="text-4xl mb-3">🔔</p>
+              <p className="text-lg font-900" style={{ color: 'var(--ac-text)' }}>
+                시간이 다 됐어요!
+              </p>
+              <p className="text-sm font-600 mt-1" style={{ color: '#8B6030' }}>
+                다음 상대로 넘어가요...
+              </p>
+            </div>
           </div>
         </div>
-      )}
-
-      {/* 타이머 */}
-      <div className="absolute top-14 right-4" style={{ zIndex: 20 }}>
-        <TimerRing totalSeconds={180} onExpire={handleTimerExpire} />
-      </div>
-
-      {/* 캐릭터 이름 태그 */}
-      <div className="absolute top-14 left-4" style={{ zIndex: 20 }}>
-        <p
-          className="text-xs font-semibold tracking-widest mb-0.5"
-          style={{ color: '#f59e0b', opacity: 0.7 }}
-        >
-          지금 만나는 상대
-        </p>
-        <p className="text-xl font-bold" style={{ color: '#f5f0e8' }}>
-          {character.displayName}
-        </p>
-        <p className="text-xs mt-0.5" style={{ color: 'rgba(240,235,220,0.4)' }}>
-          {character.personality}
-        </p>
-      </div>
-
-      {/* 포켓몬 스프라이트 */}
-      <div
-        className="absolute inset-0 flex items-center justify-center pb-64"
-        style={{ zIndex: 10 }}
-      >
-        <PokemonSprite
-          pokemonId={character.pokemonId}
-          size={260}
-          isActive={!isExpired}
-          className="game-entrance"
-        />
-      </div>
-
-      {/* 대화 패널 */}
-      {!isExpired && currentQuestion && (
-        <DialoguePanel
-          character={character}
-          question={currentQuestion.question}
-          choices={currentQuestion.choices}
-          onChoose={handleChoose}
-          isLoading={isLoadingQuestion}
-          chosenIndex={chosenIndex}
-          reaction={reaction}
-        />
       )}
     </div>
   );
