@@ -63,7 +63,6 @@ body { font-family: var(--font-geist), sans-serif; }
 .intro-spotlight-left { left: -8rem; top: 22%; transform: rotate(-26deg); background: var(--intro-gold); }
 .intro-spotlight-right { right: -8rem; top: 20%; transform: rotate(26deg); background: var(--intro-rose); }
 
-.intro-kicker { margin: 0 0 .45rem; color: var(--intro-gold); font-size: .66rem; font-weight: 700; letter-spacing: .34em; }
 .intro-season { margin: 0 0 1.2rem; color: rgb(255 239 218 / .58); font-size: .57rem; font-weight: 600; letter-spacing: .22em; }
 
 .intro-logo-lockup { display: flex; align-items: center; gap: .8rem; }

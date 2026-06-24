@@ -18,7 +18,7 @@ export function IntroClient() {
       <div className='intro-spotlight intro-spotlight-right' aria-hidden='true' />
 
       <section className='intro-content' aria-labelledby='intro-title'>
-        <div className='intro-naneunsolo-logo' aria-label='나는솔로'>
+        <div className='intro-naneunsolo-logo' role='img' aria-label='나는솔로'>
           <Lottie
             animationData={naneunsoloLogo}
             className='intro-naneunsolo-lottie'
