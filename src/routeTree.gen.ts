@@ -14,6 +14,7 @@ import { Route as PlacesRouteImport } from './routes/places'
 import { Route as NotificationsRouteImport } from './routes/notifications'
 import { Route as MeRouteImport } from './routes/me'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as GameRouteImport } from './routes/game'
 import { Route as CreateRouteImport } from './routes/create'
 import { Route as CoachRouteImport } from './routes/coach'
 import { Route as IndexRouteImport } from './routes/index'
@@ -46,6 +47,11 @@ const MeRoute = MeRouteImport.update({
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GameRoute = GameRouteImport.update({
+  id: '/game',
+  path: '/game',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CreateRoute = CreateRouteImport.update({
@@ -93,6 +99,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/coach': typeof CoachRouteWithChildren
   '/create': typeof CreateRoute
+  '/game': typeof GameRoute
   '/login': typeof LoginRoute
   '/me': typeof MeRoute
   '/notifications': typeof NotificationsRoute
@@ -107,6 +114,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/create': typeof CreateRoute
+  '/game': typeof GameRoute
   '/login': typeof LoginRoute
   '/me': typeof MeRoute
   '/notifications': typeof NotificationsRoute
@@ -123,6 +131,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/coach': typeof CoachRouteWithChildren
   '/create': typeof CreateRoute
+  '/game': typeof GameRoute
   '/login': typeof LoginRoute
   '/me': typeof MeRoute
   '/notifications': typeof NotificationsRoute
@@ -140,6 +149,7 @@ export interface FileRouteTypes {
     | '/'
     | '/coach'
     | '/create'
+    | '/game'
     | '/login'
     | '/me'
     | '/notifications'
@@ -154,6 +164,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/create'
+    | '/game'
     | '/login'
     | '/me'
     | '/notifications'
@@ -169,6 +180,7 @@ export interface FileRouteTypes {
     | '/'
     | '/coach'
     | '/create'
+    | '/game'
     | '/login'
     | '/me'
     | '/notifications'
@@ -185,6 +197,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   CoachRoute: typeof CoachRouteWithChildren
   CreateRoute: typeof CreateRoute
+  GameRoute: typeof GameRoute
   LoginRoute: typeof LoginRoute
   MeRoute: typeof MeRoute
   NotificationsRoute: typeof NotificationsRoute
@@ -228,6 +241,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/game': {
+      id: '/game'
+      path: '/game'
+      fullPath: '/game'
+      preLoaderRoute: typeof GameRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/create': {
@@ -309,6 +329,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CoachRoute: CoachRouteWithChildren,
   CreateRoute: CreateRoute,
+  GameRoute: GameRoute,
   LoginRoute: LoginRoute,
   MeRoute: MeRoute,
   NotificationsRoute: NotificationsRoute,

@@ -7,11 +7,10 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
-import { supabase } from "@/integrations/supabase/client";
 
 function NotFoundComponent() {
   return (
@@ -134,52 +133,9 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
-
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthGate>
-        <Outlet />
-      </AuthGate>
+      <Outlet />
     </QueryClientProvider>
   );
 }
-
-const PUBLIC_PATHS = ["/login"];
-
-function AuthGate({ children }: { children: ReactNode }) {
-  const router = useRouter();
-  const [checked, setChecked] = useState(false);
-  const [hasSession, setHasSession] = useState(false);
-
-  useEffect(() => {
-    let mounted = true;
-    supabase.auth.getSession().then(({ data }) => {
-      if (!mounted) return;
-      setHasSession(!!data.session);
-      setChecked(true);
-    });
-    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event !== "SIGNED_IN" && event !== "SIGNED_OUT" && event !== "USER_UPDATED")
-        return;
-      setHasSession(!!session);
-      if (event === "SIGNED_OUT") {
-        router.navigate({ to: "/login" });
-      }
-    });
-    return () => {
-      mounted = false;
-      sub.subscription.unsubscribe();
-    };
-  }, [router]);
-
-  useEffect(() => {
-    if (!checked) return;
-    const path = router.state.location.pathname;
-    if (!hasSession && !PUBLIC_PATHS.includes(path)) {
-      router.navigate({ to: "/login" });
-    }
-  }, [checked, hasSession, router, router.state.location.pathname]);
-
-  return <>{children}</>;
-}
-

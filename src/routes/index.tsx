@@ -61,6 +61,40 @@ function Home() {
       />
 
       <div className="scroll-area">
+        {/* 로테이션 소개팅 게임 배너 */}
+        <Link
+          to="/game"
+          className="relative mx-4 mt-3 block overflow-hidden rounded-2xl p-5"
+          style={{
+            background: 'linear-gradient(135deg, #0d0805 0%, #1c0e05 100%)',
+            border: '1px solid rgba(245,158,11,0.25)',
+            boxShadow: '0 4px 20px rgba(245,158,11,0.12)',
+          }}
+        >
+          <div className="flex items-center gap-3">
+            <div className="flex -space-x-2">
+              {[133, 25, 448].map((id) => (
+                <img
+                  key={id}
+                  src={`https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${id}.png`}
+                  alt=""
+                  className="w-10 h-10 object-contain drop-shadow-lg"
+                  style={{ imageRendering: 'pixelated' }}
+                />
+              ))}
+            </div>
+            <div className="flex-1">
+              <p className="text-xs font-semibold" style={{ color: '#f59e0b' }}>
+                NEW · 로테이션 소개팅
+              </p>
+              <p className="text-sm font-bold mt-0.5" style={{ color: '#f5f0e8' }}>
+                AI 포켓몬과 소개팅 게임 💫
+              </p>
+            </div>
+            <span style={{ color: 'rgba(245,158,11,0.7)', fontSize: 18 }}>→</span>
+          </div>
+        </Link>
+
         <Link
           to="/coach"
           className="brand-gradient relative mx-4 mt-3 block overflow-hidden rounded-2xl p-6"

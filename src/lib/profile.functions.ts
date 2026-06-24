@@ -1,5 +1,4 @@
 import { createServerFn } from "@tanstack/react-start";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 
 const ProfileInput = z.object({
@@ -13,40 +12,12 @@ const ProfileInput = z.object({
 });
 
 export const saveProfileFn = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => ProfileInput.parse(input))
-  .handler(async ({ data, context }) => {
-    const { supabase, userId } = context;
-    const { data: row, error } = await supabase
-      .from("profiles")
-      .upsert(
-        {
-          user_id: userId,
-          nickname: data.nickname,
-          age: data.age,
-          gender: data.gender,
-          job: data.job ?? null,
-          bio: data.bio,
-          hobbies: data.hobbies,
-          photos: data.photos,
-        },
-        { onConflict: "user_id" },
-      )
-      .select("*")
-      .single();
-    if (error) throw new Error(error.message);
-    return row;
+  .handler(async ({ data }) => {
+    return { user_id: "demo-user", ...data };
   });
 
 export const getMyProfileFn = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
-    const { supabase, userId } = context;
-    const { data, error } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("user_id", userId)
-      .maybeSingle();
-    if (error) throw new Error(error.message);
-    return data;
+  .handler(async () => {
+    return null;
   });

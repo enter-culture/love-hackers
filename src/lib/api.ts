@@ -1,24 +1,6 @@
 /**
- * 프론트엔드 API facade
- *
- * 백엔드는 Lovable Cloud(Postgres + Auth) 단독 구성입니다.
- * - 읽기(목록/상세): 브라우저 supabase 클라이언트 직접 호출 (RLS 공개 read)
- * - 쓰기/사용자별: TanStack createServerFn + requireSupabaseAuth 미들웨어
- * - AI 기능: Lovable AI Gateway via server function (인증 사용자만)
+ * 프론트엔드 API facade — 데모용 목업 구현
  */
-
-import { supabase } from "@/integrations/supabase/client";
-import {
-  analyzePhotoFn,
-  chatPracticeFn,
-  recommendPlacesFn,
-} from "./ai.functions";
-import {
-  createMeetingFn,
-  joinMeetingFn,
-  myMeetingsFn,
-} from "./meetings.functions";
-import { saveProfileFn, getMyProfileFn } from "./profile.functions";
 
 // ── Types ────────────────────────────────────────────────
 export type Gender = "M" | "F";
@@ -89,94 +71,123 @@ export interface DatePlace {
   imageQuery?: string;
 }
 
-// ── Helpers ──────────────────────────────────────────────
-type MeetingRow = {
-  id: string;
-  title: string;
-  location: string;
-  venue_type: string;
-  ratio: MeetingRatio;
-  starts_at: string;
-  male_capacity: number;
-  female_capacity: number;
-  male_count?: number | null;
-  female_count?: number | null;
-  status: "OPEN" | "CLOSED";
-  description: string | null;
-  ai_recommended: boolean;
-  host_id: string | null;
-  host_nickname?: string | null;
-};
+// ── Mock data ────────────────────────────────────────────
+const MOCK_MEETINGS: Meeting[] = [
+  {
+    id: "m1",
+    title: "성수동 감성 카페 2:2 소개팅",
+    location: "성수동",
+    venueType: "카페",
+    ratio: "2:2",
+    startsAt: "2026-07-12T14:00:00",
+    maleCount: 1,
+    femaleCount: 0,
+    maleCapacity: 2,
+    femaleCapacity: 2,
+    status: "OPEN",
+    hostNickname: "민준",
+    description: "성수동 힙한 카페에서 여유롭게 대화해요. 조용하고 분위기 좋아 대화하기 딱 좋아요!",
+    aiRecommended: true,
+    joined: false,
+  },
+  {
+    id: "m2",
+    title: "홍대 맛집 탐방 3:3",
+    location: "홍대",
+    venueType: "레스토랑",
+    ratio: "3:3",
+    startsAt: "2026-07-15T18:30:00",
+    maleCount: 2,
+    femaleCount: 1,
+    maleCapacity: 3,
+    femaleCapacity: 3,
+    status: "OPEN",
+    hostNickname: "서연",
+    description: "홍대 근처 분위기 좋은 이탈리안 레스토랑에서 만나요. 음식 얘기로 아이스브레이킹 해봐요!",
+    aiRecommended: false,
+    joined: false,
+  },
+  {
+    id: "m3",
+    title: "강남 보드게임 카페 2:2",
+    location: "강남",
+    venueType: "카페",
+    ratio: "2:2",
+    startsAt: "2026-07-05T15:00:00",
+    maleCount: 2,
+    femaleCount: 2,
+    maleCapacity: 2,
+    femaleCapacity: 2,
+    status: "CLOSED",
+    hostNickname: "지훈",
+    description: "강남 보드게임 카페에서 게임하며 자연스럽게 친해져요. 이미 마감됐어요!",
+    aiRecommended: false,
+    joined: false,
+  },
+  {
+    id: "m4",
+    title: "이태원 루프탑 4:4",
+    location: "이태원",
+    venueType: "바",
+    ratio: "4:4",
+    startsAt: "2026-07-19T19:00:00",
+    maleCount: 2,
+    femaleCount: 1,
+    maleCapacity: 4,
+    femaleCapacity: 4,
+    status: "OPEN",
+    hostNickname: "예린",
+    description: "이태원 뷰 좋은 루프탑에서 멋진 저녁을 함께해요. 경치가 최고예요!",
+    aiRecommended: true,
+    joined: false,
+  },
+  {
+    id: "m5",
+    title: "연남동 브런치 2:2",
+    location: "연남동",
+    venueType: "카페",
+    ratio: "2:2",
+    startsAt: "2026-07-20T11:00:00",
+    maleCount: 0,
+    femaleCount: 0,
+    maleCapacity: 2,
+    femaleCapacity: 2,
+    status: "OPEN",
+    hostNickname: "하은",
+    description: "연남동 감성 브런치 카페에서 여유로운 주말 아침 어떠세요?",
+    aiRecommended: false,
+    joined: false,
+  },
+];
 
-function rowToMeeting(r: MeetingRow, joinedIds?: Set<string>): Meeting {
-  return {
-    id: r.id,
-    title: r.title,
-    location: r.location,
-    venueType: r.venue_type,
-    ratio: r.ratio,
-    startsAt: r.starts_at,
-    maleCount: r.male_count ?? 0,
-    femaleCount: r.female_count ?? 0,
-    maleCapacity: r.male_capacity,
-    femaleCapacity: r.female_capacity,
-    status: r.status,
-    description: r.description,
-    aiRecommended: r.ai_recommended,
-    hostId: r.host_id,
-    hostNickname: r.host_nickname ?? null,
-    joined: joinedIds?.has(r.id) ?? false,
-  };
-}
-
-async function myJoinedIds(): Promise<Set<string>> {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return new Set();
-  const { data } = await supabase
-    .from("meeting_participants")
-    .select("meeting_id")
-    .eq("user_id", user.id);
-  return new Set((data ?? []).map((r) => r.meeting_id));
-}
+let _profile: UserProfile | null = null;
+const _joinedIds = new Set<string>();
 
 // ── API ──────────────────────────────────────────────────
 export const api = {
-  // Auth -------------------------------------------------
-  async signOut() {
-    await supabase.auth.signOut();
-  },
+  async signOut() {},
 
   async currentUser() {
-    const { data } = await supabase.auth.getUser();
-    return data.user;
+    return null;
   },
 
-  // Meetings ---------------------------------------------
   async listMeetings(filter?: { ratio?: string }): Promise<Meeting[]> {
-    let q = supabase
-      .from("meetings_with_counts")
-      .select("*")
-      .order("status", { ascending: true }) // OPEN(0) before CLOSED(1) alphabetically
-      .order("starts_at", { ascending: true });
+    let meetings = [...MOCK_MEETINGS];
     if (filter?.ratio && filter.ratio !== "전체") {
-      q = q.eq("ratio", filter.ratio as MeetingRatio);
+      meetings = meetings.filter((m) => m.ratio === filter.ratio);
     }
-    const { data, error } = await q;
-    if (error) throw new Error(error.message);
-    const joined = await myJoinedIds();
-    return (data as MeetingRow[]).map((r) => rowToMeeting(r, joined));
+    return meetings
+      .sort((a, b) => {
+        if (a.status !== b.status) return a.status === "OPEN" ? -1 : 1;
+        return new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime();
+      })
+      .map((m) => ({ ...m, joined: _joinedIds.has(m.id) }));
   },
 
   async getMeeting(id: string): Promise<Meeting> {
-    const { data, error } = await supabase
-      .from("meetings_with_counts")
-      .select("*")
-      .eq("id", id)
-      .maybeSingle();
-    if (error) throw new Error(error.message);
-    if (!data) throw new Error("모임을 찾을 수 없어요");
-    const joined = await myJoinedIds();
-    return rowToMeeting(data as MeetingRow, joined);
+    const m = MOCK_MEETINGS.find((m) => m.id === id);
+    if (!m) throw new Error("모임을 찾을 수 없어요");
+    return { ...m, joined: _joinedIds.has(m.id) };
   },
 
   async createMeeting(input: {
@@ -189,76 +200,61 @@ export const api = {
     femaleCapacity: number;
     description?: string;
   }): Promise<{ id: string }> {
-    return createMeetingFn({ data: input });
+    const id = `m${Date.now()}`;
+    MOCK_MEETINGS.unshift({
+      id,
+      ...input,
+      maleCount: 0,
+      femaleCount: 0,
+      status: "OPEN",
+      hostNickname: _profile?.nickname ?? "나",
+      description: input.description ?? null,
+      aiRecommended: false,
+      joined: false,
+    });
+    return { id };
   },
 
   async joinMeeting(id: string, _gender: Gender) {
-    await joinMeetingFn({ data: { meetingId: id } });
+    _joinedIds.add(id);
     const meeting = await api.getMeeting(id);
     return { ok: true as const, meeting };
   },
 
   async myMeetings(): Promise<Meeting[]> {
-    const rows = await myMeetingsFn();
-    const joined = await myJoinedIds();
-    return (rows as MeetingRow[]).map((r) => rowToMeeting(r, joined));
+    return MOCK_MEETINGS.filter((m) => _joinedIds.has(m.id)).map((m) => ({
+      ...m,
+      joined: true,
+    }));
   },
 
-  // Profile ----------------------------------------------
-  async saveProfile(
-    input: Omit<UserProfile, "id" | "email">,
-  ): Promise<UserProfile> {
-    const row = await saveProfileFn({ data: input });
-    const { data: { user } } = await supabase.auth.getUser();
-    return {
-      id: row.user_id,
-      email: user?.email ?? "",
-      nickname: row.nickname,
-      age: row.age,
-      gender: row.gender,
-      job: row.job ?? undefined,
-      bio: row.bio,
-      hobbies: row.hobbies,
-      photos: row.photos,
-    };
+  async saveProfile(input: Omit<UserProfile, "id" | "email">): Promise<UserProfile> {
+    _profile = { id: "demo-user", email: "demo@example.com", ...input };
+    return _profile;
   },
 
   async getMyProfile(): Promise<UserProfile | null> {
-    const row = await getMyProfileFn();
-    if (!row) return null;
-    const { data: { user } } = await supabase.auth.getUser();
-    return {
-      id: row.user_id,
-      email: user?.email ?? "",
-      nickname: row.nickname,
-      age: row.age,
-      gender: row.gender,
-      job: row.job ?? undefined,
-      bio: row.bio,
-      hobbies: row.hobbies,
-      photos: row.photos,
-    };
+    return _profile;
   },
 
-  // AI ---------------------------------------------------
-  analyzePhoto(imageDataUrl: string): Promise<PhotoAnalysis> {
-    return analyzePhotoFn({ data: { imageDataUrl } });
+  analyzePhoto(_imageDataUrl: string): Promise<PhotoAnalysis> {
+    return Promise.reject(new Error("AI 기능은 준비 중이에요."));
   },
 
   chatPractice(
-    mode: "intro" | "hobby" | "smalltalk",
-    message: string,
-    history?: { role: "user" | "assistant"; text: string }[],
+    _mode: "intro" | "hobby" | "smalltalk",
+    _message: string,
+    _history?: { role: "user" | "assistant"; text: string }[],
   ): Promise<ChatPracticeReply> {
-    return chatPracticeFn({ data: { mode, message, history } });
+    return Promise.reject(new Error("AI 기능은 준비 중이에요."));
   },
 
-  async recommendPlaces(input: {
+  async recommendPlaces(_input: {
     area: string;
     category: string;
     priceRange?: string;
     mood?: string;
   }): Promise<DatePlace[]> {
-    return recommendPlacesFn({ data: input });
+    return Promise.reject(new Error("AI 기능은 준비 중이에요."));
   },
 };

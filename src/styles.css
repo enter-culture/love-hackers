@@ -158,3 +158,34 @@
   font-size: 11px;
   font-weight: 600;
 }
+
+/* ── 게임 애니메이션 ──────────────────────────────────── */
+@keyframes game-float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-14px); }
+}
+
+@keyframes game-fade-in-up {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes game-pulse-glow {
+  0%, 100% { filter: drop-shadow(0 0 24px rgba(255, 180, 60, 0.55)) drop-shadow(0 0 60px rgba(255, 120, 20, 0.25)); }
+  50%       { filter: drop-shadow(0 0 40px rgba(255, 200, 80, 0.80)) drop-shadow(0 0 80px rgba(255, 150, 40, 0.45)); }
+}
+
+@keyframes game-entrance {
+  0%   { opacity: 0; transform: scale(0.7) translateY(30px); }
+  60%  { opacity: 1; transform: scale(1.05) translateY(-6px); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+@keyframes game-card-in {
+  from { opacity: 0; transform: translateX(40px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+.game-float    { animation: game-float 3.2s ease-in-out infinite; }
+.game-entrance { animation: game-entrance 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+.game-glow     { animation: game-pulse-glow 2.5s ease-in-out infinite; }
