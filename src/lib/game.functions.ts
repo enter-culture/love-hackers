@@ -1,6 +1,5 @@
 import { createServerFn } from '@tanstack/react-start';
 
-import { callAiGateway, parseJsonLoose } from './ai-gateway.server';
 import type { RotationCharacter } from './game/types';
 
 const FALLBACK_QUESTIONS = [
@@ -27,28 +26,8 @@ interface GenerateQuestionInput {
 export const generateQuestionFn = createServerFn({ method: 'POST' })
   .inputValidator((input: GenerateQuestionInput) => input)
   .handler(async ({ data }): Promise<{ question: string; choices: [string, string, string] }> => {
-    if (!process.env.LOVABLE_API_KEY) {
-      const idx = data.history.length % FALLBACK_QUESTIONS.length;
-      return FALLBACK_QUESTIONS[idx];
-    }
-
-    const historyText = data.history
-      .map((h) => `Q: ${h.question}\nA: ${h.chosen}`)
-      .join('\n');
-
-    const text = await callAiGateway({
-      messages: [
-        { role: 'system', content: data.character.systemPrompt },
-        {
-          role: 'user',
-          content: `지금까지 나눈 대화:\n${historyText || '(아직 없음)'}\n\n다음 질문과 선택지 3개를 JSON으로 반환해줘.\n형식: {"question":"...","choices":["...","...","..."]}`,
-        },
-      ],
-      responseFormat: 'json_object',
-      temperature: 0.85,
-    });
-
-    return parseJsonLoose(text, FALLBACK_QUESTIONS[0]);
+    const idx = data.history.length % FALLBACK_QUESTIONS.length;
+    return FALLBACK_QUESTIONS[idx];
   });
 
 interface GenerateReactionInput {
@@ -59,25 +38,9 @@ interface GenerateReactionInput {
 
 export const generateReactionFn = createServerFn({ method: 'POST' })
   .inputValidator((input: GenerateReactionInput) => input)
-  .handler(async ({ data }): Promise<{ reaction: string }> => {
-    if (!process.env.LOVABLE_API_KEY) {
-      const idx = Math.floor(Math.random() * FALLBACK_REACTIONS.length);
-      return { reaction: FALLBACK_REACTIONS[idx] };
-    }
-
-    const text = await callAiGateway({
-      messages: [
-        { role: 'system', content: data.character.systemPrompt },
-        {
-          role: 'user',
-          content: `상대방이 "${data.chosenText}"라고 답했어. 캐릭터 반응을 1~2문장으로 자연스럽게 써줘. JSON: {"reaction":"..."}`,
-        },
-      ],
-      responseFormat: 'json_object',
-      temperature: 0.9,
-    });
-
-    return parseJsonLoose(text, { reaction: FALLBACK_REACTIONS[0] });
+  .handler(async (): Promise<{ reaction: string }> => {
+    const idx = Math.floor(Math.random() * FALLBACK_REACTIONS.length);
+    return { reaction: FALLBACK_REACTIONS[idx] };
   });
 
 interface ExchangeSummary {
@@ -94,28 +57,8 @@ interface GenerateResultInput {
 export const generateResultFn = createServerFn({ method: 'POST' })
   .inputValidator((input: GenerateResultInput) => input)
   .handler(async ({ data }): Promise<{ reaction: string; heartScore: number }> => {
-    if (!process.env.LOVABLE_API_KEY) {
-      return {
-        reaction: `${data.character.displayName}: 오늘 대화 재밌었어! 또 만나고 싶다.`,
-        heartScore: 60 + Math.floor(Math.random() * 35),
-      };
-    }
-
-    const conversationSummary = data.exchanges
-      .map((e) => `Q: ${e.question} / A: ${e.chosen}`)
-      .join('\n');
-
-    const text = await callAiGateway({
-      messages: [
-        { role: 'system', content: data.character.systemPrompt },
-        {
-          role: 'user',
-          content: `소개팅이 끝났어. 오늘 나눈 대화:\n${conversationSummary || '(대화 없음)'}\n\n최종 한마디(30자 이내)와 궁합 점수(0~100 정수)를 JSON으로 반환해줘.\n형식: {"reaction":"...","heartScore":숫자}`,
-        },
-      ],
-      responseFormat: 'json_object',
-      temperature: 0.8,
-    });
-
-    return parseJsonLoose(text, { reaction: '또 만나고 싶어!', heartScore: 70 });
+    return {
+      reaction: `${data.character.displayName}: 오늘 대화 재밌었어! 또 만나고 싶다.`,
+      heartScore: 60 + Math.floor(Math.random() * 35),
+    };
   });

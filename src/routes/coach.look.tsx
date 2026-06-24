@@ -1,9 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMutation } from "@tanstack/react-query";
-import { Shirt, Sparkles, Sun, Cloud, CloudRain } from "lucide-react";
+import { Sparkles, Sun, Cloud, CloudRain } from "lucide-react";
 import { useState } from "react";
 import { PhoneShell, NavHeader } from "@/components/PhoneShell";
-import { recommendLookFn, type LookRecommendation } from "@/lib/ai.functions";
 
 export const Route = createFileRoute("/coach/look")({
   head: () => ({
@@ -33,10 +31,7 @@ function LookCoach() {
   const [weather, setWeather] = useState<"sunny" | "cloudy" | "rainy">("sunny");
   const [place, setPlace] = useState("카페");
   const [vibe, setVibe] = useState("스마트 캐주얼");
-
-  const rec = useMutation({
-    mutationFn: () => recommendLookFn({ data: { gender, weather, place, vibe } }),
-  });
+  const [showComingSoon, setShowComingSoon] = useState(false);
 
   return (
     <PhoneShell>
@@ -105,21 +100,18 @@ function LookCoach() {
           </Section>
 
           <button
-            onClick={() => rec.mutate()}
-            disabled={rec.isPending}
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-pink text-[15px] font-semibold text-white disabled:opacity-50"
+            onClick={() => setShowComingSoon(true)}
+            className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-pink text-[15px] font-semibold text-white"
           >
             <Sparkles size={16} />
-            {rec.isPending ? "코디 추천 중…" : "AI 룩 추천 받기"}
+            AI 룩 추천 받기
           </button>
 
-          {rec.isError && (
-            <div className="rounded-xl bg-red-50 p-3 text-xs text-red-600">
-              {(rec.error as Error).message}
+          {showComingSoon && (
+            <div className="rounded-xl bg-pink-light p-3 text-center text-sm text-pink">
+              AI 코디 추천 기능 준비 중이에요 ✨
             </div>
           )}
-
-          {rec.data && <Result data={rec.data} />}
         </div>
       </div>
     </PhoneShell>
@@ -135,39 +127,3 @@ function Section({ label, children }: { label: string; children: React.ReactNode
   );
 }
 
-function Result({ data }: { data: LookRecommendation }) {
-  return (
-    <div className="space-y-3">
-      <div className="rounded-2xl border border-border bg-surface p-4">
-        <div className="flex items-center gap-2">
-          <Shirt size={18} className="text-pink" />
-          <div className="text-[15px] font-semibold">{data.title}</div>
-        </div>
-        <p className="mt-2 text-[13px] leading-relaxed text-text-2">{data.summary}</p>
-      </div>
-
-      <div className="space-y-2">
-        {data.items.map((it: { category: string; description: string; color: string }, i: number) => (
-          <div key={i} className="rounded-xl border border-border bg-surface p-3">
-            <div className="flex items-center justify-between">
-              <div className="text-[13px] font-semibold">{it.category}</div>
-              <span className="tag-base bg-pink-light text-pink">{it.color}</span>
-            </div>
-            <div className="mt-1 text-[12px] text-text-2">{it.description}</div>
-          </div>
-        ))}
-      </div>
-
-      {data.tips && data.tips.length > 0 && (
-        <div className="rounded-2xl border border-purple/15 bg-purple-light p-4">
-          <div className="text-[13px] font-semibold text-purple">스타일링 팁</div>
-          <ul className="mt-2 space-y-1 text-[12px] leading-relaxed text-purple/90">
-            {data.tips.map((t: string, i: number) => (
-              <li key={i}>· {t}</li>
-            ))}
-          </ul>
-        </div>
-      )}
-    </div>
-  );
-}
